@@ -55,7 +55,7 @@ public class OthelloGame
 	 */
 	public OthelloGame()
 	{
-		this(0,0,true,-1);
+		this(0,1,true,-1);
 	}
 
 
@@ -73,9 +73,12 @@ public class OthelloGame
 	 */
 	private OthelloPlayer createPlayer(int type, char token)
 	{
-		if (type==0)
-			return new HumanOthelloPlayer(board,token);
-		return null;
+		if (type==0) {
+			return new MattOthelloPlayer(this.board,token);
+		}
+		else {
+			return new HumanOthelloPlayer(this.board, token);
+		}
 	}
 
 
