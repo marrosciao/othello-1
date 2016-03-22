@@ -6,7 +6,7 @@
  *
 */
 import java.io.IOException;
-import java.io.ObjectOutputStream;
+//import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.SocketException;
@@ -18,7 +18,7 @@ public class MattOthelloPlayer extends OthelloPlayer
     //protected char token;  // the token the player is using
     int nummoves;
     Socket socket;
-    ObjectOutputStream out;
+    PrintWriter out;
     Scanner in;
 
     // My own version of board with more public methods to get around the fact that I can't edit Board.java
@@ -39,8 +39,8 @@ public class MattOthelloPlayer extends OthelloPlayer
         
         System.out.println("Initializing MattOthelloPlayer...");
         try {
-            socket = new Socket("blackpearl", 12321);
-            out = new ObjectOutputStream(socket.getOutputStream());
+            socket = new Socket("localhost", 12321);
+            out = new PrintWriter(socket.getOutputStream());
             in = new Scanner(socket.getInputStream());
             System.out.println("Done.");
         }
@@ -86,6 +86,21 @@ public class MattOthelloPlayer extends OthelloPlayer
 
         return copy;
     }
+    
+    public String getBoardStr(AlphaBetaBoard current) {
+        String boardStr = "";
+        
+        for (int i = 0; i < current.grid.length; i++) {
+            boardStr += String.valueOf(current.grid[i]);
+        }
+        
+        boardStr += "_";
+        boardStr += String.valueOf(current.sockToken);
+        boardStr += "_";
+        boardStr += String.valueOf(current.moveCount);
+        
+        return boardStr;
+    }
 
     /**
      * Every OthelloPlayer needs to specify how they will make a move.
@@ -105,7 +120,10 @@ public class MattOthelloPlayer extends OthelloPlayer
         
         try {            
             System.out.println("Sending board.");
-            out.writeObject(current);
+            
+            String boardStr = getBoardStr(current);
+            
+            out.print(boardStr);
             
             // Get the results.
             System.out.println("Done. Waiting for results...");
