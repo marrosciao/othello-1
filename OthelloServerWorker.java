@@ -1,5 +1,7 @@
 import java.net.Socket;
-import java.io.ObjectInputStream;
+//import java.io.ObjectInputStream;
+import java.util.Scanner;
+import java.util.NoSuchElementException;
 import java.io.PrintWriter;
 import java.io.IOException;
 import java.io.EOFException;
@@ -7,13 +9,13 @@ import java.io.EOFException;
 public class OthelloServerWorker implements Runnable {
     
     public Socket socket;
-    public ObjectInputStream in;
+    public Scanner in;
     public PrintWriter out;
     public char token;
 
     public OthelloServerWorker(Socket s) throws IOException {
         socket = s;
-        in = new ObjectInputStream(socket.getInputStream());
+        in = new Scanner(socket.getInputStream());
         out = new PrintWriter(socket.getOutputStream());
     }
     
@@ -21,8 +23,22 @@ public class OthelloServerWorker implements Runnable {
         while (true) {
             try {                
                 // Get the board
-                AlphaBetaBoard board = (AlphaBetaBoard) in.readObject();
-                token = board.sockToken;
+                String boardStr = in.nextLine();
+                String[] boardArr = boardStr.split("_");
+                
+                char[][] grid = new char[8][8];
+                
+                for (int i = 0; i < boardArr[0].length(); i++) {
+                    int row = i / 8;
+                    int col = i % 8;
+                    
+                    grid[row][col] = boardArr[0].charAt(i);
+                }
+                
+                token = boardArr[1].charAt(0);
+                int moves = Integer.parseInt(boardArr[2]);
+                
+                AlphaBetaBoard board = new AlphaBetaBoard(grid, moves);
                 System.out.println("Got a board.");
                 board.display();
                 
@@ -34,7 +50,7 @@ public class OthelloServerWorker implements Runnable {
                 out.println(choice);
                 out.flush();
             }
-            catch (EOFException eof) {
+            catch (NoSuchElementException nsee) {
                 try {
                     in.close();
                     out.close();
@@ -45,12 +61,6 @@ public class OthelloServerWorker implements Runnable {
                 catch (Exception e) {
                     e.printStackTrace();
                 }
-            }
-            catch (IOException ioe) {
-                ioe.printStackTrace();
-            }
-            catch (ClassNotFoundException cnfe) {
-                cnfe.printStackTrace();
             }
         }
     }

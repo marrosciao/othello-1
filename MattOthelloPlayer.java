@@ -117,27 +117,20 @@ public class MattOthelloPlayer extends OthelloPlayer
         current.sockToken = this.token;
         
         String chosenOne = "";
+             
+        System.out.println("Sending board.");
         
-        try {            
-            System.out.println("Sending board.");
-            
-            String boardStr = getBoardStr(current);
-            
-            out.print(boardStr);
-            
-            // Get the results.
-            System.out.println("Done. Waiting for results...");
+        String boardStr = getBoardStr(current);
+        
+        out.println(boardStr);
+        out.flush();
+        
+        // Get the results.
+        System.out.println("Done. Waiting for results...");
 
-            chosenOne = in.nextLine();
-            
-            System.out.println("I picked " + chosenOne);
-        }
-        catch (SocketException se) {
-            se.printStackTrace();
-        }
-        catch (IOException ioe) {
-            ioe.printStackTrace();
-        }
+        chosenOne = in.nextLine();
+        
+        System.out.println("I picked " + chosenOne);
 
         // Add 2 to moves to keep an accurate count of moves made.        
         nummoves += 2;

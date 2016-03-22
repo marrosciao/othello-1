@@ -15,7 +15,7 @@ public class OthelloServer {
         
         try {
             server = new ServerSocket();
-            server.bind(new InetSocketAddress("0.0.0.0", 12321));
+            server.bind(new InetSocketAddress("localhost", 12321));
         }
         catch (Exception e) {
             e.printStackTrace();
