@@ -240,43 +240,6 @@ class AlphaBetaBoard {
 	}
 
 	/**
-	 * Attempt to make a move given a Move object.
-	 *
-	 * @param move a Move object containing the move to be made
-	 * @return a Move object that contains details of the successful move; null
-	 * if the move is not possible
-	 */
-	public Move makeMove(Move move)
-	{
-		return makeMove(move.token,move.i,move.j);
-	}
-
-
-	/**
-	 * Undo all captures and remove piece from a board.
-	 *
-	 * @param move a Move object containing the move to be unmade
-	 */
-	public void unMakeMove(Move move)
-	{
-		int a,b,i,n;
-		int ioff,joff;
-		char otherToken= move.token=='X' ? 'O' : 'X';
-
-		grid[move.i][move.j]= ' ';
-		for (i=0; i<8 && move.captures[i]!=null; i++) {
-			n= move.captures[i].n;
-			ioff= move.captures[i].ioff;
-			joff= move.captures[i].joff;
-			for (a=move.i+ioff, b=move.j+joff; n>0; a+=ioff, b+=joff) {
-				grid[a][b]= otherToken;
-				n--;
-			}
-		}
-		moveCount--;
-	}
-
-	/**
 	 * Attempt to capture pieces in the specified direction.
 	 *
 	 * @param move a Move object representing the move from which we are capturing
@@ -357,32 +320,6 @@ class AlphaBetaBoard {
 		return sum;
 	}
 
-
-	/**
-	 * Display results of game (so far or at end of game).
-	 */
-	public void showResults()
-	{
-		int i,j;
-		int xcount, ocount;
-
-		if (!gameOver())
-			System.out.print("Current Standing: ");
-		else
-			System.out.print("Final Results   : ");
-
-		xcount= ocount= 0;
-
-		for (i=0; i<8; i++)
-			for (j=0; j<8; j++)
-				if (grid[i][j]=='X')
-					xcount++;
-				else if (grid[i][j]=='O')
-					ocount++;
-		System.out.println("X("+xcount+") - O("+ocount+")");
-	}
-
-
 	/**
 	 * Determine whether specified player can move at position.
 	 *
@@ -436,17 +373,6 @@ class AlphaBetaBoard {
 		return ""+(char)((char)j+(char)'a')+(char)((char)(i+1)+(char)'0');
 	}
 
-
-	/**
-	 * Determine if game is over or not.
-	 *
-	 * @return true if board is full or no moves possible; false otherwise
-	 */
-	public boolean gameOver()
-	{
-		return moveCount==64 || (countPossibleMoves('O',false)==0 && countPossibleMoves('X',false)==0);
-	}
-
     public String getMoves(char targetToken) {
         char otherToken= targetToken=='X' ? 'O' : 'X';
         String moves = "";
@@ -494,4 +420,3 @@ class AlphaBetaBoard {
         return copy;
     }
 }
-

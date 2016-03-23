@@ -195,7 +195,9 @@ String AlphaBetaBoard_get_moves(AlphaBetaBoard * this, char targetToken) {
         moves.s[1] = ' ';
         moves.length = 2;
     }
-    printf("moves: %*.*s\n", moves.length, moves.length, moves.s);
+    
+    moves.s[moves.length] = '\0';
+    printf("moves: %s\n", moves.s);
     
     return moves;
 }
@@ -377,6 +379,7 @@ int alphabeta(char token, AlphaBetaBoard * board, int ply, int alpha, int beta, 
 }
 
 String makeMove(char token, AlphaBetaBoard * board) {
+    printf("In makeMove\n");
     int ply = 10; // initial ply.
 
     if (60 - board->moveCount < ply) { // You don't want to look more if the game will be over.
@@ -396,13 +399,12 @@ String makeMove(char token, AlphaBetaBoard * board) {
     int abresult;
     
     String chosenOne;
-
+    printf("Going into get_moves\n");
     // Generate all possible moves;
     String moveStr = AlphaBetaBoard_get_moves(&current, token);
     int numMoves = (moveStr.length + 1) / 3;
     //printf("The board has this heuristic value: %d\n", sbe(token, &current));
     //System.out.println("I am " + token + " at the top level of ply " + ply + " and I can move in these places: " + moveStr);
-    return chosenOne;
     // There exists the posibility that you might not be able to make a move. In that case return null.
     if (numMoves == 0) {
         board->moveCount += 2;

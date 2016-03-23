@@ -209,7 +209,7 @@ public class OthelloServerWorker implements Runnable {
     }
 
     public String makeMove(AlphaBetaBoard board) {
-        int ply = 10; // initial ply.
+        int ply = 8; // initial ply.
 
         if (60 - board.moveCount < ply) { // You don't want to look more if the game will be over.
             ply = 60 - board.moveCount;
@@ -231,7 +231,6 @@ public class OthelloServerWorker implements Runnable {
         //System.out.println("The board has this heuristic value: " + sbe(current));
         //System.out.println("I am " + token + " at the top level of ply " + ply + " and I can move in these places: " + moveStr);
         String[] moves = moveStr.split(" ");
-
         // There exists the posibility that you might not be able to make a move. In that case return null.
         if (moves.length == 0) {
             board.moveCount += 2;
@@ -240,6 +239,24 @@ public class OthelloServerWorker implements Runnable {
         else if (moves.length == 1) { // If there is only one move then you don't want to waste time looking ahead.
             board.moveCount += 2;
             return moves[0];
+        }
+
+        // Every once in a while at the end of the game the AI will try to make a move at ply zero which will cause a stack overflow error.
+        if (ply <= 0 && moves.length > 0) {
+            
+            for (int i = 0; i < moves.length; i++) {
+                AlphaBetaBoard next = new AlphaBetaBoard(current.boardCopy(), board.moveCount);
+                next.makeMove(token, moves[i]);
+                
+                int sberesult = sbe(next);
+                
+                if (sberesult > bestSoFar) {
+                    bestSoFar = sberesult;
+                    bestIndex = i;
+                }
+            }
+            
+            return moves[bestIndex];
         }
 
         String optionStr = "";
