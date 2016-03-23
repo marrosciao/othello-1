@@ -155,7 +155,6 @@ String AlphaBetaBoard_translate_move(int i, int j) {
 String AlphaBetaBoard_get_moves(AlphaBetaBoard * this, char targetToken) {
     char otherToken= targetToken=='X' ? 'O' : 'X';
     String moves;
-    char * moveTmp = "";
     int n;
     int numMoves = 0;
     int i, j;
@@ -163,9 +162,7 @@ String AlphaBetaBoard_get_moves(AlphaBetaBoard * this, char targetToken) {
     
     for (i=0; i<8; i++) {
         for (j=0; j<8; j++) {
-            //printf("Entering if\n");
             if (this->grid.grid[i][j]==' ') {
-                //printf("Start...");
                 n= 0;
                 n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,+1,+1);
                 n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,+1,+0);
@@ -175,30 +172,30 @@ String AlphaBetaBoard_get_moves(AlphaBetaBoard * this, char targetToken) {
                 n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,-1,+1);
                 n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,-1,+0);
                 n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,-1,-1);
-
+                
                 if (n>0) {
                     String tmp = AlphaBetaBoard_translate_move(i,j);
                     if (numMoves != 0) {
-                        strcat(moveTmp, " ");
+                        strncat(moves.s, " ", 1);
+                        moves.length++;
                     }
                     
-                    strncat(moveTmp, tmp.s, 2);
+                    strncat(moves.s, tmp.s, 2);
+                    moves.length += 2;
                     numMoves++;
                 }
-                //printf("End\n");
             }
         }
     }
 
-    if (numMoves != 0) {
-        moves.length = (3 * numMoves) - 1;
-        strncpy(moves.s, moveTmp, moves.length);
-    }
-
     // If this method finishes and there were no moves then we want the entire string to be spaces.
-    moves.s[0] = ' ';
-    moves.s[1] = ' ';
-    moves.length = 2;
+
+    if (numMoves == 0) {
+        moves.s[0] = ' ';
+        moves.s[1] = ' ';
+        moves.length = 2;
+    }
+    printf("moves: %*.*s\n", moves.length, moves.length, moves.s);
     
     return moves;
 }
@@ -380,7 +377,6 @@ int alphabeta(char token, AlphaBetaBoard * board, int ply, int alpha, int beta, 
 }
 
 String makeMove(char token, AlphaBetaBoard * board) {
-    
     int ply = 10; // initial ply.
 
     if (60 - board->moveCount < ply) { // You don't want to look more if the game will be over.
@@ -406,7 +402,7 @@ String makeMove(char token, AlphaBetaBoard * board) {
     int numMoves = (moveStr.length + 1) / 3;
     //printf("The board has this heuristic value: %d\n", sbe(token, &current));
     //System.out.println("I am " + token + " at the top level of ply " + ply + " and I can move in these places: " + moveStr);
-
+    return chosenOne;
     // There exists the posibility that you might not be able to make a move. In that case return null.
     if (numMoves == 0) {
         board->moveCount += 2;
@@ -424,7 +420,8 @@ String makeMove(char token, AlphaBetaBoard * board) {
     }
 
     //String optionStr = "";
-
+    
+    printf("Looking through moves...\n");
     // This will look through all the top moves at the very least because alpha is always less than beta.
     int i;
     for (i = 0; i < numMoves; i++) {
@@ -456,9 +453,12 @@ String makeMove(char token, AlphaBetaBoard * board) {
         if (beta <= alpha) { break; }
     }
     
+    printf("bestIndex: %d", bestIndex);
     int chosenIndex = bestIndex * 3;
     chosenOne.s[0] = moveStr.s[chosenIndex];
     chosenOne.s[1] = moveStr.s[chosenIndex+1];
+    printf("First char: %c", moveStr.s[chosenIndex]);
+    printf("Second char: %c", moveStr.s[chosenIndex+1]);
     chosenOne.length = 2;
     
     // We have the move
@@ -478,7 +478,7 @@ void serv_worker(void * socket_handle) {
     AlphaBetaBoard board;
     String chosenOne;
 
-    while (true) {
+    //while (true) {
         // Get the board
         read_size = recv(client_desc, data, 100, 0);
     
@@ -489,7 +489,7 @@ void serv_worker(void * socket_handle) {
     
         if (read_size == -1) {
             perror("recv failed");
-            break;
+            //break;
         }
         else if (read_size != 0) {
             // Parse the data
@@ -533,7 +533,7 @@ void serv_worker(void * socket_handle) {
             printf("I chose %s", chosenOne.s);
             write(client_desc, chosenOne.s, 3);
         }
-    }
+    //}
 }
 
 int main() {
