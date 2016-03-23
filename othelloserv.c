@@ -7,6 +7,19 @@
 #include <unistd.h>
 #include <pthread.h>
 
+int false = 0;
+int true = 1;
+
+typedef struct {
+    char s[64];
+    char * sp;
+    int length;
+} String;
+
+typedef struct {
+    char grid[8][8];
+} Grid;
+
 // Capture class and methods
 typedef struct {
     int ioff;
@@ -49,76 +62,62 @@ void move_add_capture(Move * this, int ioff, int joff, int num) {
 
 // AlphaBetaBoard class and methods
 typedef struct {
+    Grid grid;
     int moveCount;
-    char grid[8][8];
-    char sockToken;
 } AlphaBetaBoard;
 
-AlphaBetaBoard new_AlphaBetaBoard(char * data_p) {
-    AlphaBetaBoard new_abb;
-    int i;
-    int row = 0;
-    int col = 0;
+AlphaBetaBoard new_AlphaBetaBoard(Grid g, int mc) {
+    AlphaBetaBoard board;
+    board.grid = g;
+    board.moveCount = mc;
     
-    // The first 64 characters will be the board
-    for (i = 0; i < 64; i++) {
-        row = i / 8;
-        col = i % 8;
-        
-        new_abb.grid[row][col] = *data_p;
-        data_p++;
-    }
-    
-    // i = 64 which is an underscore so move the pointer up another
-    data_p++;
-    
-    // The next character will be the token
-    new_abb.sockToken = *data_p;
-    data_p++;
-    
-    // The next at most 2 characters will be a number
-    int moveCount = (*data_p - 30);
-    data_p++;
-    
-    if ((*data_p) != '\0') {
-        moveCount *= 10;
-        moveCount += *data_p;
-    }
-    
-    new_abb.moveCount = moveCount;
-    
-    return new_abb;
+    return board;
 }
 
 void AlphaBetaBoard_display(AlphaBetaBoard * this) {
-    int i;
-    int j;
-    
+    int i,j;
     printf("   ");
     
-    for (i=0; i<8; i++) {
-        printf(" %c", (char)(i+97));
-    }
+    for (i=0; i<8; i++)
+        printf(" %c",(char)(i+97));
     
     printf("\n");
 
     for (i=0; i<8; i++) {
-        printf(" %d", i+1);
-        
-        for (j=0; j<8; j++) {
-            printf(" %c", this->grid[i][j]);
+        printf(" %d",i+1);
+        for (j=0; j<8; j++)
+            printf(" %c",this->grid.grid[i][j]);
+        printf("  %d",i+1);
+        printf("\n");
+    }
+
+    printf("   ");
+    for (i=0; i<8; i++)
+        printf(" %c",(char)(i+97));
+    printf("\n");
+}
+
+Grid AlphaBetaBoard_board_copy(AlphaBetaBoard * this) {
+    Grid grid;
+    int row, col;
+
+    for (row = 0; row < 8; row++) {
+        for (col = 0; col < 8; col++) {
+            grid.grid[row][col] = this->grid.grid[row][col];
         }
-        
-        printf("  %d\n", i+1);
     }
 
-    printf("   ");
-    
-    for (i=0; i<8; i++) {
-	    printf(" %c", (char)(i+97));
-	}
-	
-    printf("\n");
+    return grid;
+}
+
+int AlphaBetaBoard_count_captures(AlphaBetaBoard * this, char otherToken, int i, int j, int ioff, int joff) {
+    int a,b,n=0;
+
+    for (a=i+ioff, b=j+joff; a>=0 && a<8 && b>=0 && b<8 && this->grid.grid[a][b]==otherToken; a+=ioff, b+=joff)
+        n++;
+        
+    if (a<0 || a>7 || b<0 || b>7 || this->grid.grid[a][b]==' ') return 0;
+    return n;
 }
 
 int AlphaBetaBoard_capture(AlphaBetaBoard * this, Move * move, int ioff, int joff) {
@@ -126,17 +125,17 @@ int AlphaBetaBoard_capture(AlphaBetaBoard * this, Move * move, int ioff, int jof
     char otherToken= move->token=='X' ? 'O' : 'X';
 
     // try capturing in the current direction, changing discs as we go
-    for (a=move->i+ioff, b=move->j+joff; a>=0 && a<8 && b>=0 && b<8 && this->grid[a][b]==otherToken; a+=ioff, b+=joff) {
-        this->grid[a][b]= move->token;
+    for (a=move->i+ioff, b=move->j+joff; a>=0 && a<8 && b>=0 && b<8 && this->grid.grid[a][b]==otherToken; a+=ioff, b+=joff) {
+        this->grid.grid[a][b]= move->token;
         n++;
     }
 
     // did we run off edge of grid or encounter a blank when
     // we were turning over pieces? If so, we have to restore
     // those slots to what they were before.
-    if (a<0 || a>7 || b<0 || b>7 || this->grid[a][b]==' ') {
+    if (a<0 || a>7 || b<0 || b>7 || this->grid.grid[a][b]==' ') {
         for (a-=ioff, b-=joff; n>0; a-=ioff, b-=joff, n--) {
-            this->grid[a][b]= otherToken;
+            this->grid.grid[a][b]= otherToken;
         }
     }
 
@@ -144,116 +143,29 @@ int AlphaBetaBoard_capture(AlphaBetaBoard * this, Move * move, int ioff, int jof
     return n;
 }
 
-int AlphaBetaBoard_count_captures(AlphaBetaBoard * this, char otherToken, int i, int j, int ioff, int joff) {
-    int a,b,n=0;
-
-    for (a=i+ioff, b=j+joff; a>=0 && a<8 && b>=0 && b<8 && this->grid[a][b]==otherToken; a+=ioff, b+=joff)
-        n++;
-    if (a<0 || a>7 || b<0 || b>7 || this->grid[a][b]==' ') return 0;
-    return n;
-}
-
-Move * AlphaBetaBoard_make_move_ij(AlphaBetaBoard * this, char token, int i, int j) {
-    int totalChange;
-    Move moveobj = new_move(i, j, token);
-    Move * move = &moveobj;
-
-    totalChange= 0;
-    totalChange+= AlphaBetaBoard_capture(this, move,+1,+0); // down
-    totalChange+= AlphaBetaBoard_capture(this, move,-1,+0); // up
-    totalChange+= AlphaBetaBoard_capture(this, move,+0,+1); // right
-    totalChange+= AlphaBetaBoard_capture(this, move,+0,-1); // left
-    totalChange+= AlphaBetaBoard_capture(this, move,-1,+1); // diag up-right
-    totalChange+= AlphaBetaBoard_capture(this, move,+1,+1); // diag down-right
-    totalChange+= AlphaBetaBoard_capture(this, move,-1,-1); // diag up-left
-    totalChange+= AlphaBetaBoard_capture(this, move,+1,-1); // diag down-left
-
-    if (totalChange>0) {
-        this->grid[i][j]= token;
-        this->moveCount++;
-        return move;
-    }
+String AlphaBetaBoard_translate_move(int i, int j) {
+    String moveStr;
+    moveStr.s[0] = (char)((char)j+(char)'a');
+    moveStr.s[1] = (char)((char)(i+1)+(char)'0');
+    moveStr.length = 2;
     
-    return NULL;
+    return moveStr;
 }
 
-Move * AlphaBetaBoard_make_move_str(AlphaBetaBoard * this, char token, char * theMove) {
-    char col = *theMove;
-    theMove++;
-    int i = ((int)*theMove) - ((int)'0') - 1;
-    theMove--;
-    int j = ((int) col) - ((int)'a');
-    return AlphaBetaBoard_make_move_ij(this, token, i, j);
-}
-
-Move * AlphaBetaBoard_make_move_move(AlphaBetaBoard * this, Move * move) {
-    return AlphaBetaBoard_make_move_ij(this, move->token, move->i, move->j);
-}
-
-void AlphaBetaBoard_unmake_move(AlphaBetaBoard * this, Move * move) {
-    int a,b,i,n;
-    int ioff,joff;
-    char otherToken= move->token=='X' ? 'O' : 'X';
-
-    this->grid[move->i][move->j]= ' ';
-    for (i=0; i<8 && &(move->captures[i])!=NULL; i++) { // Be careful here
-        n= move->captures[i].n;
-        ioff= move->captures[i].ioff;
-        joff= move->captures[i].joff;
-        for (a=move->i+ioff, b=move->j+joff; n>0; a+=ioff, b+=joff) {
-            this->grid[a][b]= otherToken;
-            n--;
-        }
-    }
-    this->moveCount--;
-}
-
-int AlphaBetaBoard_can_move_ij(AlphaBetaBoard * this, char token, int i, int j) {
-    char otherToken= token=='X' ? 'O' : 'X';
-    int n=0;
-
-    if (this->grid[i][j]==' ') {
-        n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,+1,+1);
-        n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,+1,+0);
-        n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,+1,-1);
-        n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,+0,-1);
-        n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,+0,+1);
-        n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,-1,+1);
-        n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,-1,+0);
-        n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,-1,-1);
-    }
-    return n>0;
-}
-
-int AlphaBetaBoard_can_move_str(AlphaBetaBoard * this, char token, char * theMove) {
-    char col = *theMove;
-    theMove++;
-    int i = ((int)*theMove) - ((int)'0') - 1;
-    theMove--;
-    int j = ((int) col) - ((int)'a');
-    return AlphaBetaBoard_can_move_ij(this, token, i, j);
-}
-
-char * AlphaBetaBoard_translate_move(int i, int j) {
-    char * translation = "";
-    char firstChar = (char)((char)j+(char)'a');
-    char secondChar = (char)((char)(i+1)+(char)'0');
-    strcat(translation, &firstChar);
-    strcat(translation, &secondChar);
+String AlphaBetaBoard_get_moves(AlphaBetaBoard * this, char targetToken) {
+    char otherToken= targetToken=='X' ? 'O' : 'X';
+    String moves;
+    char * moveTmp = "";
+    int n;
+    int numMoves = 0;
+    int i, j;
+    //Grid grid = this->grid;
     
-    return translation;
-}
-
-int AlphaBetaBoard_count_possible_moves(AlphaBetaBoard * this, char token, int showMoves) {
-    int i,j;
-    char otherToken= token=='X' ? 'O' : 'X';
-    int n,sum=0;
-
-    if (showMoves)
-        printf("Possible Moves:");
     for (i=0; i<8; i++) {
         for (j=0; j<8; j++) {
-            if (this->grid[i][j]==' ') {
+            //printf("Entering if\n");
+            if (this->grid.grid[i][j]==' ') {
+                //printf("Start...");
                 n= 0;
                 n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,+1,+1);
                 n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,+1,+0);
@@ -263,85 +175,365 @@ int AlphaBetaBoard_count_possible_moves(AlphaBetaBoard * this, char token, int s
                 n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,-1,+1);
                 n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,-1,+0);
                 n+= AlphaBetaBoard_count_captures(this, otherToken,i,j,-1,-1);
-                if (showMoves && n>0) {
-                    char * transMove = AlphaBetaBoard_translate_move(i,j);
-                    printf(" ");
-                    printf("%s", transMove);
+
+                if (n>0) {
+                    String tmp = AlphaBetaBoard_translate_move(i,j);
+                    if (numMoves != 0) {
+                        strcat(moveTmp, " ");
+                    }
+                    
+                    strncat(moveTmp, tmp.s, 2);
+                    numMoves++;
                 }
-                
-                sum+= n>0 ? 1 : 0;
+                //printf("End\n");
             }
         }
     }
-    if (showMoves)
-        printf("\n");
-    return sum;
-}
 
-int AlphaBetaBoard_game_over(AlphaBetaBoard * this) {
-    return this->moveCount==64 || (AlphaBetaBoard_count_possible_moves(this, 'O', 0)==0 && AlphaBetaBoard_count_possible_moves(this, 'X', 0)==0);
-}
+    if (numMoves != 0) {
+        moves.length = (3 * numMoves) - 1;
+        strncpy(moves.s, moveTmp, moves.length);
+    }
 
-void AlphaBetaBoard_show_results(AlphaBetaBoard * this) {
-    int i,j;
-    int xcount, ocount;
-
-    if (!AlphaBetaBoard_game_over(this))
-        printf("Current Standing: ");
-    else
-        printf("Final Results   : ");
-
-    xcount= ocount= 0;
-
-    for (i=0; i<8; i++)
-        for (j=0; j<8; j++)
-            if (this->grid[i][j]=='X')
-                xcount++;
-            else if (this->grid[i][j]=='O')
-                ocount++;
-    printf("X(%d) - O(%d)\n", xcount, ocount);
-}
-
-char * AlphaBetaBoard_board_copy(AlphaBetaBoard * this) {
-    char copy[8][8];
-    char[][] * copy_p = &copy;
-    int row;
-    int col;
+    // If this method finishes and there were no moves then we want the entire string to be spaces.
+    moves.s[0] = ' ';
+    moves.s[1] = ' ';
+    moves.length = 2;
     
+    return moves;
+}
+
+Move * AlphaBetaBoard_make_move_ij(AlphaBetaBoard * this, char token, int i, int j) {
+    int totalChange;
+    Move move = new_move(i,j,token);
+    Move * move_ptr = &move;
+
+    totalChange= 0;
+    totalChange+= AlphaBetaBoard_capture(this, move_ptr,+1,+0); // down
+    totalChange+= AlphaBetaBoard_capture(this, move_ptr,-1,+0); // up
+    totalChange+= AlphaBetaBoard_capture(this, move_ptr,+0,+1); // right
+    totalChange+= AlphaBetaBoard_capture(this, move_ptr,+0,-1); // left
+    totalChange+= AlphaBetaBoard_capture(this, move_ptr,-1,+1); // diag up-right
+    totalChange+= AlphaBetaBoard_capture(this, move_ptr,+1,+1); // diag down-right
+    totalChange+= AlphaBetaBoard_capture(this, move_ptr,-1,-1); // diag up-left
+    totalChange+= AlphaBetaBoard_capture(this, move_ptr,+1,-1); // diag down-left
+
+    if (totalChange>0) {
+        this->grid.grid[i][j]= token;
+        this->moveCount++;
+        return move_ptr;
+    }
+    
+    return NULL;
+}
+
+Move * AlphaBetaBoard_make_move_str(AlphaBetaBoard * this, char token, String theMove) {
+    char col = theMove.s[0];
+    return AlphaBetaBoard_make_move_ij(this, token, (int)theMove.s[1]-(int)'0'-1, (int) col - (int) 'a');
+}
+
+// Worker Methods
+
+int tokenCount(Grid grid, char targetToken) {
+    int count = 0;
+    int row, col;
+
     for (row = 0; row < 8; row++) {
         for (col = 0; col < 8; col++) {
-            copy[row][col] = this->grid[row][col];
+            if (grid.grid[row][col] == targetToken) {
+                count++;
+            }
         }
     }
 
-    return copy_p;
+    return count;
 }
 
+int sbe(char token, AlphaBetaBoard * board) {
+    int xcount = tokenCount(board->grid, 'X');
+    int ocount = tokenCount(board->grid, 'O');
+    int h = 0; // H for heuristic value
+
+    if (token == 'X') {
+        h = xcount - ocount;
+    }
+    else {
+        h = ocount - xcount;
+    }
+
+    return h;
+}
+
+    // This returns the SBE of the best move
+int alphabeta(char token, AlphaBetaBoard * board, int ply, int alpha, int beta, int maxLevel) {
+    if (ply == 0) {
+        return sbe(token, board);
+    }
+    else {
+        int bestSoFar = 0;
+        AlphaBetaBoard current = new_AlphaBetaBoard(AlphaBetaBoard_board_copy(board), board->moveCount); // might not need moves
+        int abresult;
+        int bestIndex = -1;
+
+        if (maxLevel) {
+            bestSoFar = -100000;
+            // Generate all possible moves;
+            String moveStr = AlphaBetaBoard_get_moves(&current, token);
+            int numMoves = (moveStr.length + 1) / 3;
+            //String optionStr = "";
+
+            //System.out.println("In alphabeta at a maximizing level. The ply is " + ply + ". These are the moves I can make: " + moveStr);
+
+            // If the player cannot move then this loop doesn't run
+            int i;
+            for (i = 0; i < numMoves; i++) {
+                AlphaBetaBoard next = new_AlphaBetaBoard(AlphaBetaBoard_board_copy(&current), current.moveCount);
+                int movePos = i * 3;
+                String thisMove;
+                thisMove.s[0] = moveStr.s[movePos];
+                thisMove.s[1] = moveStr.s[movePos+1];
+                thisMove.length = 2;
+
+                if (thisMove.s[0] != ' ' && thisMove.s[1] != ' ') { // If the move was just spaces then there was no move to make and this doesn't happen
+                    AlphaBetaBoard_make_move_str(&next, token, thisMove); // Make the move with our token
+                }
+
+                abresult = alphabeta(token, &next, ply - 1, alpha, beta, false);
+                //optionStr += abresult + " ";
+
+                if (abresult > bestSoFar) {
+                    bestSoFar = abresult;
+                    bestIndex = i;
+                }
+
+                if (bestSoFar > alpha) {
+                    alpha = bestSoFar;
+                }
+
+                if (beta < alpha) { break; }
+            }
+
+            if (bestIndex != -1) {
+                //System.out.println("The options I had at ply " + ply + " were " + moveStr);
+                //System.out.println("(Maximizing) They had these values: " + optionStr);
+                //System.out.println("I picked " + moves[bestIndex] + " with value " + bestSoFar);
+            }
+            else { // The only winning move is not to play
+                bestSoFar = alphabeta(token, &current, ply - 1, alpha, beta, false);
+            }
+        }
+        else {
+            bestSoFar = 100000;
+            // We need the other player's token
+            char otherToken = (token == 'X') ? 'O' : 'X';
+
+            // Generate all possible moves;
+            String moveStr = AlphaBetaBoard_get_moves(&current, otherToken);
+            int numMoves = (moveStr.length + 1) / 3;
+            //String optionStr = "";
+
+            //System.out.println("In alphabeta at a minimizing level. The ply is " + ply + ". These are the moves you can make: " + moveStr);
+
+            // If the player cannot move then this loop doesn't run
+            int i;
+            for (i = 0; i < numMoves; i++) {
+                AlphaBetaBoard next = new_AlphaBetaBoard(AlphaBetaBoard_board_copy(&current), current.moveCount);
+                int movePos = i * 3;
+                String thisMove;
+                thisMove.s[0] = moveStr.s[movePos];
+                thisMove.s[1] = moveStr.s[movePos+1];
+                thisMove.length = 2;
+                
+                if (thisMove.s[0] != ' ' && thisMove.s[1] != ' ') { // If the move was just spaces then there was no move to make and this doesn't happen
+                    AlphaBetaBoard_make_move_str(&next, otherToken, thisMove); // Make the move with their token
+                }
+
+                abresult = alphabeta(token, &next, ply - 1, alpha, beta, true);
+                //optionStr += abresult + " ";
+
+                if (abresult < bestSoFar) {
+                    bestSoFar = abresult;
+                    bestIndex = i;
+                }
+
+                if (bestSoFar < beta) {
+                    beta = bestSoFar;
+                }
+
+                if (beta <= alpha) { break; }
+            }
+
+            if (bestIndex != -1) {
+                //System.out.println("The options you had at ply " + ply + " were " + moveStr);
+                //System.out.println("(Minimizing) They had these values: " + optionStr);
+                //System.out.println("You picked " + moves[bestIndex] + " with value " + bestSoFar);
+            }
+            else { // The only winning move is not to play
+                bestSoFar = alphabeta(token, &current, ply - 1, alpha, beta, true);
+            }
+
+
+        }
+
+        return bestSoFar;
+    }
+}
+
+String makeMove(char token, AlphaBetaBoard * board) {
+    
+    int ply = 10; // initial ply.
+
+    if (60 - board->moveCount < ply) { // You don't want to look more if the game will be over.
+        ply = 60 - board->moveCount;
+
+        if (ply % 2 == 1) { // You don't want the ply to be odd because why would you do that?
+            ply--;
+        }
+    }
+
+    AlphaBetaBoard current = new_AlphaBetaBoard(AlphaBetaBoard_board_copy(board), board->moveCount);
+
+    int alpha = -100000;
+    int beta = 100000;
+    int bestSoFar = 100000;
+    int bestIndex = -1;
+    int abresult;
+    
+    String chosenOne;
+
+    // Generate all possible moves;
+    String moveStr = AlphaBetaBoard_get_moves(&current, token);
+    int numMoves = (moveStr.length + 1) / 3;
+    //printf("The board has this heuristic value: %d\n", sbe(token, &current));
+    //System.out.println("I am " + token + " at the top level of ply " + ply + " and I can move in these places: " + moveStr);
+
+    // There exists the posibility that you might not be able to make a move. In that case return null.
+    if (numMoves == 0) {
+        board->moveCount += 2;
+        chosenOne.s[0] = ' ';
+        chosenOne.s[1] = ' ';
+        chosenOne.length = 2;
+        return chosenOne;
+    }
+    else if (numMoves == 1) { // If there is only one move then you don't want to waste time looking ahead.
+        board->moveCount += 2;
+        chosenOne.s[0] = moveStr.s[0];
+        chosenOne.s[1] = moveStr.s[1];
+        chosenOne.length = 2;
+        return chosenOne;
+    }
+
+    //String optionStr = "";
+
+    // This will look through all the top moves at the very least because alpha is always less than beta.
+    int i;
+    for (i = 0; i < numMoves; i++) {
+        AlphaBetaBoard next = new_AlphaBetaBoard(AlphaBetaBoard_board_copy(&current), current.moveCount);
+        int movePos = i * 3;
+        String thisMove;
+        thisMove.s[0] = moveStr.s[movePos];
+        thisMove.s[1] = moveStr.s[movePos+1];
+        thisMove.length = 2;
+        AlphaBetaBoard_make_move_str(&next, token, thisMove);
+        abresult = alphabeta(token, &next, ply - 1, alpha, beta, false);
+
+        if (abresult > bestSoFar) {
+            bestSoFar = abresult;
+            bestIndex = i;
+        }/*
+        else if (abresult == bestSoFar) { // Keep things interesting
+            int random = (int) (Math.random() * 2.0);
+            
+            if (random == 1 && !(moves[i].equals("a1") || moves[i].equals("h1") || moves[i].equals("a8") || moves[i].equals("h8"))) { // Don't pass up a corner
+                bestIndex = i;
+            }
+        }*/
+
+        if (bestSoFar > alpha) {
+            alpha = bestSoFar;
+        }
+
+        if (beta <= alpha) { break; }
+    }
+    
+    int chosenIndex = bestIndex * 3;
+    chosenOne.s[0] = moveStr.s[chosenIndex];
+    chosenOne.s[1] = moveStr.s[chosenIndex+1];
+    chosenOne.length = 2;
+    
+    // We have the move
+    return chosenOne;
+}
+
+
 // This function is just like the constructor and run methods in OthelloServerWorker
-void * serv_worker(void * socket_handle) {
+void serv_worker(void * socket_handle) {
     int client_desc = *(int*) socket_handle;
     int read_size = 0;
     char data[69];
+    int index, row, col;
+    char token;
+    int numMoves;
+    Grid grid;
+    AlphaBetaBoard board;
+    String chosenOne;
 
-    // Get the board
-    read_size = recv(client_desc, data, 100, 0);
+    while (true) {
+        // Get the board
+        read_size = recv(client_desc, data, 100, 0);
     
-    printf("Read size is %d\n", read_size);
+        //printf("Read size is %d\n", read_size);
     
-    data[read_size] = '\0';
-    puts(data);
+        data[read_size] = '\0';
+        //puts(data);
     
-    if (read_size == 0) {
-        puts("No more data");
-    }
-    else if (read_size == -1) {
-        perror("recv failed");
-    }
-    else {
+        if (read_size == -1) {
+            perror("recv failed");
+            break;
+        }
+        else if (read_size != 0) {
+            // Parse the data
 
-    }
+            // Get the board
+            for (index = 0; index < 64; index++) {
+                row = index / 8;
+                col = index % 8;
+
+                grid.grid[row][col] = data[index];
+            }
+
+            //printf("This should be an underscore: %c\n", data[index]);
+            index++;
+            token = data[index];
+            //index++;
+            //printf("This should be an underscore: %c\n", data[index]);
+            //index++;
+            index += 2;
+            //printf("This is the first digit: %c\n", data[index]);
+            numMoves = (int) (data[index] - '0');
+            //printf("numMoves so far: %d\n", numMoves);
+            index++;
+
+            if (data[index] >= '0' && data[index] <= '9') {
+                numMoves *= 10;
+                numMoves += (int) (data[index] - '0');
+                //printf("This is the second digit: %c\n", data[index]);
+            }
+
+            printf("Token: %c\nNumMoves: %d\n", token, numMoves);
+
+            board = new_AlphaBetaBoard(grid, numMoves);
     
-    return;
+            printf("The board:\n");
+            AlphaBetaBoard_display(&board);
+
+            chosenOne = makeMove(token, &board);
+            chosenOne.s[2] = '\n';
+
+            printf("I chose %s", chosenOne.s);
+            write(client_desc, chosenOne.s, 3);
+        }
+    }
 }
 
 int main() {

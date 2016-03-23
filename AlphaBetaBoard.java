@@ -2,9 +2,7 @@
  * An older programmer once told me that object oriented programming was the work of satan. I now understand.
  */
 
-import java.io.Serializable;
-
-public class AlphaBetaBoard implements Serializable {
+public class AlphaBetaBoard {
     int moveCount;
     char[][] grid;
     char sockToken;

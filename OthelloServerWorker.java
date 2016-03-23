@@ -255,6 +255,13 @@ public class OthelloServerWorker implements Runnable {
                 bestSoFar = abresult;
                 bestIndex = i;
             }
+            else if (abresult == bestSoFar) { // Keep things interesting
+                int random = (int) (Math.random() * 2.0);
+                
+                if (random == 1 && !(moves[i].equals("a1") || moves[i].equals("h1") || moves[i].equals("a8") || moves[i].equals("h8"))) { // Don't pass up a corner
+                    bestIndex = i;
+                }
+            }
 
             if (bestSoFar > alpha) {
                 alpha = bestSoFar;
