@@ -122,7 +122,7 @@ public class MattOthelloPlayer extends OthelloPlayer
         
         String boardStr = getBoardStr(current);
         
-        out.print(boardStr);
+        out.println(boardStr);
         out.flush();
         
         // Get the results.

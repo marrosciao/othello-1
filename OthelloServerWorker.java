@@ -254,7 +254,7 @@ public class OthelloServerWorker implements Runnable {
             if (abresult > bestSoFar) {
                 bestSoFar = abresult;
                 bestIndex = i;
-            }
+            }/*
             else if (abresult == bestSoFar) { // Keep things interesting
                 int random = (int) (Math.random() * 2.0);
                 
@@ -262,7 +262,7 @@ public class OthelloServerWorker implements Runnable {
                     bestIndex = i;
                 }
             }
-
+*/
             if (bestSoFar > alpha) {
                 alpha = bestSoFar;
             }
