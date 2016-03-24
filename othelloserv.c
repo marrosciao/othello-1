@@ -59,6 +59,8 @@ void move_add_capture(Move * this, int ioff, int joff, int num) {
     Capture * capture_ptr = malloc(sizeof(Capture));
     capture_ptr = new_capture(ioff, joff, num);
     Capture capture = *capture_ptr;
+    // We have the value so we don't need the pointer anymore
+    free(capture_ptr);
     this->captures[this->n] = capture;
     this->n++;
 }
@@ -73,7 +75,7 @@ AlphaBetaBoard * new_AlphaBetaBoard(Grid * g, int mc) {
     AlphaBetaBoard * board = (AlphaBetaBoard *) malloc(sizeof(AlphaBetaBoard));
     board->grid = *g;
     board->moveCount = mc;
-    
+    //free(g);
     return board;
 }
 
@@ -162,7 +164,6 @@ String * AlphaBetaBoard_get_moves(AlphaBetaBoard * this, char targetToken) {
     int n;
     int numMoves = 0;
     int i, j;
-    //Grid grid = this->grid;
     
     for (i=0; i<8; i++) {
         for (j=0; j<8; j++) {
@@ -187,6 +188,7 @@ String * AlphaBetaBoard_get_moves(AlphaBetaBoard * this, char targetToken) {
                     strncat(moves->s, tmp->s, 2);
                     moves->length += 2;
                     numMoves++;
+                    free(tmp);
                 }
             }
         }
@@ -227,7 +229,7 @@ Move * AlphaBetaBoard_make_move_ij(AlphaBetaBoard * this, char token, int i, int
     else {
         move = NULL;
     }
-    
+    free(move);
     return move;
 }
 
@@ -315,7 +317,10 @@ int alphabeta(char token, AlphaBetaBoard * board, int ply, int alpha, int beta, 
                 if (bestSoFar > alpha) {
                     alpha = bestSoFar;
                 }
-
+                
+                //free(next->grid);
+                free(next);
+                
                 if (beta < alpha) { break; }
             }
 
@@ -327,6 +332,8 @@ int alphabeta(char token, AlphaBetaBoard * board, int ply, int alpha, int beta, 
             else { // The only winning move is not to play
                 bestSoFar = alphabeta(token, current, ply - 1, alpha, beta, false);
             }
+            
+            free(moveStr);
         }
         else {
             bestSoFar = 100000;
@@ -365,7 +372,10 @@ int alphabeta(char token, AlphaBetaBoard * board, int ply, int alpha, int beta, 
                 if (bestSoFar < beta) {
                     beta = bestSoFar;
                 }
-
+                
+                //free(next->grid);
+                free(next);
+                
                 if (beta <= alpha) { break; }
             }
 
@@ -378,9 +388,11 @@ int alphabeta(char token, AlphaBetaBoard * board, int ply, int alpha, int beta, 
                 bestSoFar = alphabeta(token, current, ply - 1, alpha, beta, true);
             }
 
+            free(moveStr);
 
         }
-
+        //free(current->grid);
+        free(current);
         return bestSoFar;
     }
 }
@@ -422,6 +434,9 @@ String * makeMove(char token, AlphaBetaBoard * board) {
         chosenOne->s[1] = ' ';
         chosenOne->length = 2;
         //printf("No moves found.\n");
+        //free(current->grid);
+        free(current);
+        free(moveStr);
         return chosenOne;
     }
     else if (numMoves == 1) { // If there is only one move then you don't want to waste time looking ahead.
@@ -431,6 +446,9 @@ String * makeMove(char token, AlphaBetaBoard * board) {
         chosenOne->length = 2;
         chosenOne->s[2] = '\0';
         //printf("Only one move found: %s", chosenOne->s);
+        //free(current->grid);
+        free(current);
+        free(moveStr);
         return chosenOne;
     }
 
@@ -457,6 +475,9 @@ String * makeMove(char token, AlphaBetaBoard * board) {
                 bestSoFar = sberesult;
                 bestIndex = i;
             }
+            
+            //free(next->grid);
+            free(next);
         }
         
         int chosenIndex = bestIndex * 3;
@@ -467,6 +488,9 @@ String * makeMove(char token, AlphaBetaBoard * board) {
         chosenOne->s[2] = '\0';
         //printf("End of makeMove. Returning %s\n", chosenOne->s);
         // We have the move
+        //free(current->grid);
+        free(current);
+        free(moveStr);
         return chosenOne;
     }
 
@@ -501,7 +525,8 @@ String * makeMove(char token, AlphaBetaBoard * board) {
         if (bestSoFar > alpha) {
             alpha = bestSoFar;
         }
-
+        //free(next->grid);
+        free(next);
         if (beta <= alpha) { break; }
     }
     
@@ -512,6 +537,9 @@ String * makeMove(char token, AlphaBetaBoard * board) {
     chosenOne->s[2] = '\0';
     //printf("End of makeMove. Returning %s\n", chosenOne->s);
     // We have the move
+    //free(current->grid);
+    free(current);
+    free(moveStr);
     return chosenOne;
 }
 
@@ -524,10 +552,10 @@ void serv_worker(void * socket_handle) {
     char token;
     int numMoves;
     Grid grid;
-    AlphaBetaBoard * board;
-    String * chosenOne;
 
     while (true) {
+        AlphaBetaBoard * board;
+        String * chosenOne;
         // Get the board
         char data[70];
         read_size = recv(client_desc, data, 100, 0);
@@ -576,6 +604,10 @@ void serv_worker(void * socket_handle) {
             printf("I chose %s\n", chosenOne->s);
             write(client_desc, chosenOne->s, 3);
         }
+        
+        //free(board->grid);
+        //free(board);
+        //free(chosenOne);
     }
 }
 
