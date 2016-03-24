@@ -156,6 +156,7 @@ String * AlphaBetaBoard_translate_move(int i, int j) {
 }
 
 String * AlphaBetaBoard_get_moves(AlphaBetaBoard * this, char targetToken) {
+    printf("Looking for moves...\n");
     char otherToken= targetToken=='X' ? 'O' : 'X';
     String * moves = malloc(sizeof(String));
     int n;
@@ -200,8 +201,7 @@ String * AlphaBetaBoard_get_moves(AlphaBetaBoard * this, char targetToken) {
     }
     
     moves->s[moves->length] = '\0';
-    printf("moves: %s\n", moves->s);
-    
+    printf("Found these moves: %s\n", moves->s);
     return moves;
 }
 
@@ -270,7 +270,9 @@ int sbe(char token, AlphaBetaBoard * board) {
 
     // This returns the SBE of the best move
 int alphabeta(char token, AlphaBetaBoard * board, int ply, int alpha, int beta, int maxLevel) {
+    printf("In alphabeta. Ply: %d\n", ply);
     if (ply == 0) {
+        printf("Going up.");
         return sbe(token, board);
     }
     else {
@@ -384,8 +386,10 @@ int alphabeta(char token, AlphaBetaBoard * board, int ply, int alpha, int beta, 
 }
 
 String * makeMove(char token, AlphaBetaBoard * board) {
-    printf("In makeMove\n");
     int ply = 10; // initial ply.
+
+    int test = 60 - board->moveCount;
+    printf("There should be %d moves left on the board.\n", test);
 
     if (60 - board->moveCount < ply) { // You don't want to look more if the game will be over.
         ply = 60 - board->moveCount;
@@ -395,27 +399,29 @@ String * makeMove(char token, AlphaBetaBoard * board) {
         }
     }
 
+    printf("Making move with ply %d\n", ply);
+
     AlphaBetaBoard * current = new_AlphaBetaBoard(AlphaBetaBoard_board_copy(board), board->moveCount);
 
     int alpha = -100000;
     int beta = 100000;
-    int bestSoFar = 100000;
+    int bestSoFar = -100000;
     int bestIndex = -1;
     int abresult;
     
     String * chosenOne = (String *) malloc(sizeof(String));
-    printf("Going into get_moves\n");
     // Generate all possible moves;
     String * moveStr = AlphaBetaBoard_get_moves(current, token);
     int numMoves = (moveStr->length + 1) / 3;
-    //printf("The board has this heuristic value: %d\n", sbe(token, &current));
-    //System.out.println("I am " + token + " at the top level of ply " + ply + " and I can move in these places: " + moveStr);
+    printf("The board has this heuristic value: %d\n", sbe(token, current));
+    printf("I am %c at the top level of ply %d and I can move in these places: %s\n", token, ply, moveStr->s);
     // There exists the posibility that you might not be able to make a move. In that case return null.
     if (numMoves == 0) {
         board->moveCount += 2;
         chosenOne->s[0] = ' ';
         chosenOne->s[1] = ' ';
         chosenOne->length = 2;
+        printf("No moves found.\n");
         return chosenOne;
     }
     else if (numMoves == 1) { // If there is only one move then you don't want to waste time looking ahead.
@@ -423,6 +429,44 @@ String * makeMove(char token, AlphaBetaBoard * board) {
         chosenOne->s[0] = moveStr->s[0];
         chosenOne->s[1] = moveStr->s[1];
         chosenOne->length = 2;
+        chosenOne->s[2] = '\0';
+        printf("Only one move found: %s", chosenOne->s);
+        return chosenOne;
+    }
+
+    // Every once in a while at the end of the game the ai will try to make a
+    // move at ply zero which causes a stack overflow in java and a segmenation
+    // fault in c
+    int i;
+    if (ply == 0 && numMoves > 0) {
+        for (i = 0; i < numMoves; i++) {
+            int movePos = i * 3;
+            String thisMove;
+            thisMove.s[0] = moveStr->s[movePos];
+            thisMove.s[1] = moveStr->s[movePos+1];
+            thisMove.length = 2;
+            thisMove.s[2] = '\0';
+            printf("Looking at this move: %s\n", thisMove.s);
+            
+            AlphaBetaBoard * next = new_AlphaBetaBoard(AlphaBetaBoard_board_copy(current), current->moveCount);
+            AlphaBetaBoard_make_move_str(next, token, thisMove);
+            
+            int sberesult = sbe(token, next);
+            
+            if (sberesult > bestSoFar) {
+                bestSoFar = sberesult;
+                bestIndex = i;
+            }
+        }
+        
+        int chosenIndex = bestIndex * 3;
+        printf("This is the best move: %c%c\n", moveStr->s[chosenIndex], moveStr->s[chosenIndex+1]);
+        chosenOne->s[0] = moveStr->s[chosenIndex];
+        chosenOne->s[1] = moveStr->s[chosenIndex+1];
+        chosenOne->length = 2;
+        chosenOne->s[2] = '\0';
+        printf("End of makeMove. Returning %s\n", chosenOne->s);
+        // We have the move
         return chosenOne;
     }
 
@@ -430,7 +474,6 @@ String * makeMove(char token, AlphaBetaBoard * board) {
     
     printf("Looking through moves...\n");
     // This will look through all the top moves at the very least because alpha is always less than beta.
-    int i;
     for (i = 0; i < numMoves; i++) {
         AlphaBetaBoard * next = new_AlphaBetaBoard(AlphaBetaBoard_board_copy(current), current->moveCount);
         int movePos = i * 3;
@@ -438,7 +481,9 @@ String * makeMove(char token, AlphaBetaBoard * board) {
         thisMove.s[0] = moveStr->s[movePos];
         thisMove.s[1] = moveStr->s[movePos+1];
         thisMove.length = 2;
+        thisMove.s[2] = '\0';
         AlphaBetaBoard_make_move_str(next, token, thisMove);
+        printf("At the top. Looking at this move: %s. Ply: %d\n", thisMove.s, ply);
         abresult = alphabeta(token, next, ply - 1, alpha, beta, false);
 
         if (abresult > bestSoFar) {
@@ -460,14 +505,12 @@ String * makeMove(char token, AlphaBetaBoard * board) {
         if (beta <= alpha) { break; }
     }
     
-    printf("bestIndex: %d", bestIndex);
     int chosenIndex = bestIndex * 3;
     chosenOne->s[0] = moveStr->s[chosenIndex];
     chosenOne->s[1] = moveStr->s[chosenIndex+1];
-    printf("First char: %c", moveStr->s[chosenIndex]);
-    printf("Second char: %c", moveStr->s[chosenIndex+1]);
     chosenOne->length = 2;
-    
+    chosenOne->s[2] = '\0';
+    printf("End of makeMove. Returning %s\n", chosenOne->s);
     // We have the move
     return chosenOne;
 }
@@ -477,7 +520,6 @@ String * makeMove(char token, AlphaBetaBoard * board) {
 void serv_worker(void * socket_handle) {
     int client_desc = *(int*) socket_handle;
     int read_size = 0;
-    char data[69];
     int index, row, col;
     char token;
     int numMoves;
@@ -485,8 +527,9 @@ void serv_worker(void * socket_handle) {
     AlphaBetaBoard * board;
     String * chosenOne;
 
-    //while (true) {
+    while (true) {
         // Get the board
+        char data[70];
         read_size = recv(client_desc, data, 100, 0);
     
         //printf("Read size is %d\n", read_size);
@@ -496,7 +539,7 @@ void serv_worker(void * socket_handle) {
     
         if (read_size == -1) {
             perror("recv failed");
-            //break;
+            break;
         }
         else if (read_size != 0) {
             // Parse the data
@@ -509,22 +552,15 @@ void serv_worker(void * socket_handle) {
                 grid.grid[row][col] = data[index];
             }
 
-            //printf("This should be an underscore: %c\n", data[index]);
             index++;
             token = data[index];
-            //index++;
-            //printf("This should be an underscore: %c\n", data[index]);
-            //index++;
             index += 2;
-            //printf("This is the first digit: %c\n", data[index]);
             numMoves = (int) (data[index] - '0');
-            //printf("numMoves so far: %d\n", numMoves);
             index++;
 
             if (data[index] >= '0' && data[index] <= '9') {
                 numMoves *= 10;
                 numMoves += (int) (data[index] - '0');
-                //printf("This is the second digit: %c\n", data[index]);
             }
 
             printf("Token: %c\nNumMoves: %d\n", token, numMoves);
@@ -537,10 +573,10 @@ void serv_worker(void * socket_handle) {
             chosenOne = makeMove(token, board);
             chosenOne->s[2] = '\n';
 
-            printf("I chose %s", chosenOne->s);
+            printf("I chose %s\n", chosenOne->s);
             write(client_desc, chosenOne->s, 3);
         }
-    //}
+    }
 }
 
 int main() {
@@ -584,6 +620,7 @@ int main() {
                 status = 3;
             }
             else { // Start a thread for that socket.
+                printf("Starting new worker\n");
                 serv_worker((void*) &client_desc);
             }
         }
