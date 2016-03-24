@@ -156,7 +156,7 @@ String * AlphaBetaBoard_translate_move(int i, int j) {
 }
 
 String * AlphaBetaBoard_get_moves(AlphaBetaBoard * this, char targetToken) {
-    printf("Looking for moves...\n");
+    //printf("Looking for moves...\n");
     char otherToken= targetToken=='X' ? 'O' : 'X';
     String * moves = malloc(sizeof(String));
     int n;
@@ -201,7 +201,7 @@ String * AlphaBetaBoard_get_moves(AlphaBetaBoard * this, char targetToken) {
     }
     
     moves->s[moves->length] = '\0';
-    printf("Found these moves: %s\n", moves->s);
+    //printf("Found these moves: %s\n", moves->s);
     return moves;
 }
 
@@ -270,9 +270,9 @@ int sbe(char token, AlphaBetaBoard * board) {
 
     // This returns the SBE of the best move
 int alphabeta(char token, AlphaBetaBoard * board, int ply, int alpha, int beta, int maxLevel) {
-    printf("In alphabeta. Ply: %d\n", ply);
+    //printf("In alphabeta. Ply: %d\n", ply);
     if (ply == 0) {
-        printf("Going up.");
+        //printf("Going up.");
         return sbe(token, board);
     }
     else {
@@ -388,8 +388,8 @@ int alphabeta(char token, AlphaBetaBoard * board, int ply, int alpha, int beta, 
 String * makeMove(char token, AlphaBetaBoard * board) {
     int ply = 10; // initial ply.
 
-    int test = 60 - board->moveCount;
-    printf("There should be %d moves left on the board.\n", test);
+    //int test = 60 - board->moveCount;
+    //printf("There should be %d moves left on the board.\n", test);
 
     if (60 - board->moveCount < ply) { // You don't want to look more if the game will be over.
         ply = 60 - board->moveCount;
@@ -399,7 +399,7 @@ String * makeMove(char token, AlphaBetaBoard * board) {
         }
     }
 
-    printf("Making move with ply %d\n", ply);
+    //printf("Making move with ply %d\n", ply);
 
     AlphaBetaBoard * current = new_AlphaBetaBoard(AlphaBetaBoard_board_copy(board), board->moveCount);
 
@@ -413,15 +413,15 @@ String * makeMove(char token, AlphaBetaBoard * board) {
     // Generate all possible moves;
     String * moveStr = AlphaBetaBoard_get_moves(current, token);
     int numMoves = (moveStr->length + 1) / 3;
-    printf("The board has this heuristic value: %d\n", sbe(token, current));
-    printf("I am %c at the top level of ply %d and I can move in these places: %s\n", token, ply, moveStr->s);
+    //printf("The board has this heuristic value: %d\n", sbe(token, current));
+    //printf("I am %c at the top level of ply %d and I can move in these places: %s\n", token, ply, moveStr->s);
     // There exists the posibility that you might not be able to make a move. In that case return null.
     if (numMoves == 0) {
         board->moveCount += 2;
         chosenOne->s[0] = ' ';
         chosenOne->s[1] = ' ';
         chosenOne->length = 2;
-        printf("No moves found.\n");
+        //printf("No moves found.\n");
         return chosenOne;
     }
     else if (numMoves == 1) { // If there is only one move then you don't want to waste time looking ahead.
@@ -430,7 +430,7 @@ String * makeMove(char token, AlphaBetaBoard * board) {
         chosenOne->s[1] = moveStr->s[1];
         chosenOne->length = 2;
         chosenOne->s[2] = '\0';
-        printf("Only one move found: %s", chosenOne->s);
+        //printf("Only one move found: %s", chosenOne->s);
         return chosenOne;
     }
 
@@ -446,7 +446,7 @@ String * makeMove(char token, AlphaBetaBoard * board) {
             thisMove.s[1] = moveStr->s[movePos+1];
             thisMove.length = 2;
             thisMove.s[2] = '\0';
-            printf("Looking at this move: %s\n", thisMove.s);
+            //printf("Looking at this move: %s\n", thisMove.s);
             
             AlphaBetaBoard * next = new_AlphaBetaBoard(AlphaBetaBoard_board_copy(current), current->moveCount);
             AlphaBetaBoard_make_move_str(next, token, thisMove);
@@ -465,14 +465,14 @@ String * makeMove(char token, AlphaBetaBoard * board) {
         chosenOne->s[1] = moveStr->s[chosenIndex+1];
         chosenOne->length = 2;
         chosenOne->s[2] = '\0';
-        printf("End of makeMove. Returning %s\n", chosenOne->s);
+        //printf("End of makeMove. Returning %s\n", chosenOne->s);
         // We have the move
         return chosenOne;
     }
 
     //String optionStr = "";
     
-    printf("Looking through moves...\n");
+    //printf("Looking through moves...\n");
     // This will look through all the top moves at the very least because alpha is always less than beta.
     for (i = 0; i < numMoves; i++) {
         AlphaBetaBoard * next = new_AlphaBetaBoard(AlphaBetaBoard_board_copy(current), current->moveCount);
@@ -483,7 +483,7 @@ String * makeMove(char token, AlphaBetaBoard * board) {
         thisMove.length = 2;
         thisMove.s[2] = '\0';
         AlphaBetaBoard_make_move_str(next, token, thisMove);
-        printf("At the top. Looking at this move: %s. Ply: %d\n", thisMove.s, ply);
+        //printf("At the top. Looking at this move: %s. Ply: %d\n", thisMove.s, ply);
         abresult = alphabeta(token, next, ply - 1, alpha, beta, false);
 
         if (abresult > bestSoFar) {
@@ -510,7 +510,7 @@ String * makeMove(char token, AlphaBetaBoard * board) {
     chosenOne->s[1] = moveStr->s[chosenIndex+1];
     chosenOne->length = 2;
     chosenOne->s[2] = '\0';
-    printf("End of makeMove. Returning %s\n", chosenOne->s);
+    //printf("End of makeMove. Returning %s\n", chosenOne->s);
     // We have the move
     return chosenOne;
 }
