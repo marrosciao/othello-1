@@ -21,7 +21,7 @@ public class OthelloTestClient {
 		grid[3][4]= 'O';
 		grid[4][3]= 'O';
             
-        board = new AlphaBetaBoard(grid, 59);
+        board = new AlphaBetaBoard(grid, 0);
         board.display();
         board.sockToken = token;
         Scanner in;
@@ -50,7 +50,7 @@ public class OthelloTestClient {
             boardStr += String.valueOf(board.moveCount);
             
             // The string is ready to send
-            out.print(boardStr);
+            out.println(boardStr);
             
             // Get the results.
             //System.out.println("Done. Waiting for results...");

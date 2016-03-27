@@ -77,7 +77,7 @@ public class OthelloGame
 			return new MattOthelloPlayer(this.board,token);
 		}
 		else {
-			return new HumanOthelloPlayer(this.board, token);
+			return new RandomOthelloPlayer(this.board, token);
 		}
 	}
 

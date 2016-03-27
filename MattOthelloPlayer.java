@@ -6,11 +6,12 @@
  *
 */
 import java.io.IOException;
-//import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.Scanner;
+import java.net.URLConnection;
+import java.net.URL;
 
 public class MattOthelloPlayer extends OthelloPlayer
 {
@@ -39,7 +40,13 @@ public class MattOthelloPlayer extends OthelloPlayer
         
         System.out.println("Initializing MattOthelloPlayer...");
         try {
-            socket = new Socket("localhost", 12321);
+            URLConnection connection = new URL("http://csci.hsutx.edu/~mchastings/othello/").openConnection();
+            String url = "http://example.com";
+            String charset = "UTF-8";
+            connection.setRequestProperty("Accept-Charset", charset);
+            Scanner scan = new Scanner(connection.getInputStream());
+            String ip = scan.nextLine();
+            socket = new Socket(ip, 12321);
             out = new PrintWriter(socket.getOutputStream());
             in = new Scanner(socket.getInputStream());
             System.out.println("Done.");

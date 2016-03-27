@@ -189,7 +189,7 @@ public class OthelloServerWorker implements Runnable {
                         beta = bestSoFar;
                     }
 
-                    if (beta <= alpha) { /*System.out.println("Breaking");*/ break; }
+                    if (beta < alpha) { /*System.out.println("Breaking");*/ break; }
                 }
 
                 if (bestIndex != -1) {
