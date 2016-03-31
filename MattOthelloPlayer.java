@@ -21,6 +21,7 @@ public class MattOthelloPlayer extends OthelloPlayer
     Socket socket;
     PrintWriter out;
     Scanner in;
+    int overCount;
 
     // My own version of board with more public methods to get around the fact that I can't edit Board.java
     
@@ -46,7 +47,7 @@ public class MattOthelloPlayer extends OthelloPlayer
             connection.setRequestProperty("Accept-Charset", charset);
             Scanner scan = new Scanner(connection.getInputStream());
             String ip = scan.nextLine();
-            socket = new Socket(ip, 12321);
+            socket = new Socket("localhost", 12321);
             out = new PrintWriter(socket.getOutputStream());
             in = new Scanner(socket.getInputStream());
             System.out.println("Done.");
@@ -155,6 +156,12 @@ public class MattOthelloPlayer extends OthelloPlayer
             bestChoice = null;
         }
 
+        if (timeTaken > 10000) {
+            overCount++;
+        }
+        
+        System.out.println("Went over " + overCount + " times.");
+
         return bestChoice;
     }
 }
@@ -163,6 +170,8 @@ class AlphaBetaBoard {
     int moveCount;
     char[][] grid;
     char sockToken;
+    int xcount;
+    int ocount;
 
     public AlphaBetaBoard(char[][] g, int mc) {
         grid = g;
@@ -246,6 +255,34 @@ class AlphaBetaBoard {
 		return makeMove(token,(int)theMove.charAt(1)-(int)'0'-1,(int) col - (int) 'a');
 	}
 
+    public void unmakeMove(Move move)
+    {
+        int a,b,i,n;
+        int ioff,joff;
+        char otherToken= move.token=='X' ? 'O' : 'X';
+
+        grid[move.i][move.j]= ' ';
+        for (i=0; i<8 && move.captures[i]!=null; i++) {
+            n= move.captures[i].n;
+            ioff= move.captures[i].ioff;
+            joff= move.captures[i].joff;
+            for (a=move.i+ioff, b=move.j+joff; n>0; a+=ioff, b+=joff) {
+                grid[a][b]= otherToken;
+                n--;
+                
+                if (otherToken == 'X') {
+                    xcount++;
+                    ocount--;
+                }
+                else {
+                    ocount++;
+                    xcount--;
+                }
+            }
+        }
+        moveCount--;
+    }
+
 	/**
 	 * Attempt to capture pieces in the specified direction.
 	 *
@@ -260,9 +297,18 @@ class AlphaBetaBoard {
 		char otherToken= move.token=='X' ? 'O' : 'X';
 
 		// try capturing in the current direction, changing discs as we go
-		for (a=move.i+ioff, b=move.j+joff; a>=0 && a<8 && b>=0 && b<8 && grid[a][b]==otherToken; a+=ioff, b+=joff) {
+		for (a=move.i+ioff, b=move.j+joff; a>=0 && a<8 && b>=0 && b<8 && grid[a][b]==otherToken; a+=ioff, b+=joff) { // This flips pieces
 			grid[a][b]= move.token;
 			n++;
+			
+			if (move.token == 'X') {
+			    ocount--;
+			    xcount++;
+			}
+			else {
+			    xcount--;
+			    ocount++;
+			}
 		}
 
 		// did we run off edge of grid or encounter a blank when
@@ -271,6 +317,15 @@ class AlphaBetaBoard {
 		if (a<0 || a>7 || b<0 || b>7 || grid[a][b]==' ') {
 			for (a-=ioff, b-=joff; n>0; a-=ioff, b-=joff, n--) {
 				grid[a][b]= otherToken;
+				
+				if (otherToken == 'X') {
+				    xcount++;
+				    ocount--;
+				}
+				else {
+				    ocount++;
+				    xcount--;
+				}
 			}
 		}
 

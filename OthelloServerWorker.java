@@ -39,12 +39,15 @@ public class OthelloServerWorker implements Runnable {
                 int moves = Integer.parseInt(boardArr[2]);
                 
                 AlphaBetaBoard board = new AlphaBetaBoard(grid, moves);
+                board.xcount = tokenCount(grid, 'X');
+                board.ocount = tokenCount(grid, 'O');
                 System.out.println("Got a board.");
                 board.display();
                 
                 // Make the choice
                 String choice = makeMove(board);
                 System.out.println("I chose " + choice);
+                System.out.println("xcount: " + board.xcount + " ocount: " + board.ocount);
                 // Send the choice
                 System.out.println("Sending choice...");
                 out.println(choice);
@@ -81,22 +84,20 @@ public class OthelloServerWorker implements Runnable {
     }
     // Done
     public int sbe(AlphaBetaBoard board) {
-        int xcount = tokenCount(board.grid, 'X');
-        int ocount = tokenCount(board.grid, 'O');
         int h = 0; // H for heuristic value
 
         if (token == 'X') {
-            h = xcount - ocount;
+            h = board.xcount - board.ocount;
         }
         else {
-            h = ocount - xcount;
+            h = board.ocount - board.xcount;
         }
 
         return h;
     }
 
     // This returns the SBE of the best move
-    public int alphabeta(AlphaBetaBoard board, int ply, int alpha, int beta, boolean maxLevel) {
+    public int alphabeta(AlphaBetaBoard board, int ply, int alpha, int beta, boolean maxLevel, boolean lastNoMoves) {
         /*
          * I don't need to check for a terminal state because the game is over when all
          * the spaces are filled and alphabeta will not check beyond this because ply
@@ -108,16 +109,20 @@ public class OthelloServerWorker implements Runnable {
         }
         else {
             int bestSoFar = 0;
-            AlphaBetaBoard current = new AlphaBetaBoard(board.boardCopy(), board.moveCount); // might not need moves
+            //AlphaBetaBoard current = new AlphaBetaBoard(board.boardCopy(), board.moveCount); // might not need moves
             int abresult;
             int bestIndex = -1;
 
             if (maxLevel) {
                 bestSoFar = Integer.MIN_VALUE;
                 // Generate all possible moves;
-                String moveStr = current.getMoves(token);
+                String moveStr = board.getMoves(token);
                 String[] moves = moveStr.split(" ");
                 String optionStr = "";
+                
+                if (moves.length == 0 && lastNoMoves) {
+                    return sbe(board);
+                }
 
                 //System.out.println("In alphabeta at a maximizing level. The ply is " + ply + ". These are the moves I can make: " + moveStr);
 
@@ -125,13 +130,19 @@ public class OthelloServerWorker implements Runnable {
 
                 // If the player cannot move then this loop doesn't run
                 for (int i = 0; i < moves.length /*&& (alpha <= beta || runOnce)*/; i++) {
-                    AlphaBetaBoard next = new AlphaBetaBoard(current.boardCopy(), current.moveCount);
+                    //AlphaBetaBoard next = new AlphaBetaBoard(current.boardCopy(), current.moveCount);
+                    Move move = null;
 
                     if (moves[i].length() != 0) {
-                        next.makeMove(token, moves[i]); // Make the move with our token
+                        move = board.makeMove(token, moves[i]); // Make the move with our token
                     }
 
-                    abresult = alphabeta(next, ply - 1, alpha, beta, false);
+                    abresult = alphabeta(board, ply - 1, alpha, beta, false, false);
+                    
+                    if (moves[i].length() != 0) {
+                        board.unmakeMove(move);
+                    }
+                    
                     optionStr += abresult + " ";
 
                     if (abresult > bestSoFar) {
@@ -152,7 +163,7 @@ public class OthelloServerWorker implements Runnable {
                     //System.out.println("I picked " + moves[bestIndex] + " with value " + bestSoFar);
                 }
                 else { // The only winning move is not to play
-                    bestSoFar = alphabeta(current, ply - 1, alpha, beta, false);
+                    bestSoFar = alphabeta(board, ply - 1, alpha, beta, false, true);
                 }
             }
             else {
@@ -161,9 +172,13 @@ public class OthelloServerWorker implements Runnable {
                 char otherToken = (token == 'X') ? 'O' : 'X';
 
                 // Generate all possible moves;
-                String moveStr = current.getMoves(otherToken);
+                String moveStr = board.getMoves(otherToken);
                 String[] moves = moveStr.split(" ");
                 String optionStr = "";
+                
+                if (moves.length == 0 && lastNoMoves) {
+                    return sbe(board);
+                }
 
                 //System.out.println("In alphabeta at a minimizing level. The ply is " + ply + ". These are the moves you can make: " + moveStr);
 
@@ -171,13 +186,19 @@ public class OthelloServerWorker implements Runnable {
 
                 // If the player cannot move then this loop doesn't run
                 for (int i = 0; i < moves.length /*&& (alpha <= beta || runOnce)*/; i++) {
-                    AlphaBetaBoard next = new AlphaBetaBoard(current.boardCopy(), current.moveCount);
+                    //AlphaBetaBoard next = new AlphaBetaBoard(current.boardCopy(), current.moveCount);
+                    Move move = null;
 
                     if (moves[i].length() != 0) {
-                        next.makeMove(otherToken, moves[i]); // Make the move with their token
+                        move = board.makeMove(otherToken, moves[i]); // Make the move with their token
                     }
 
-                    abresult = alphabeta(next, ply - 1, alpha, beta, true);
+                    abresult = alphabeta(board, ply - 1, alpha, beta, true, false);
+                    
+                    if (moves[i].length() != 0) {
+                        board.unmakeMove(move);
+                    }
+                    
                     optionStr += abresult + " ";
 
                     if (abresult < bestSoFar) {
@@ -198,7 +219,7 @@ public class OthelloServerWorker implements Runnable {
                     //System.out.println("You picked " + moves[bestIndex] + " with value " + bestSoFar);
                 }
                 else { // The only winning move is not to play
-                    bestSoFar = alphabeta(current, ply - 1, alpha, beta, true);
+                    bestSoFar = alphabeta(board, ply - 1, alpha, beta, true, true);
                 }
 
 
@@ -219,7 +240,7 @@ public class OthelloServerWorker implements Runnable {
             }
         }
 
-        AlphaBetaBoard current = new AlphaBetaBoard(board.boardCopy(), board.moveCount);
+        //AlphaBetaBoard current = new AlphaBetaBoard(board.boardCopy(), board.moveCount);
 
         int alpha = Integer.MIN_VALUE;
         int beta = Integer.MAX_VALUE;
@@ -227,7 +248,7 @@ public class OthelloServerWorker implements Runnable {
         int bestIndex = -1;
         int abresult;
         // Generate all possible moves;
-        String moveStr = current.getMoves(token);
+        String moveStr = board.getMoves(token);
         //System.out.println("The board has this heuristic value: " + sbe(current));
         //System.out.println("I am " + token + " at the top level of ply " + ply + " and I can move in these places: " + moveStr);
         String[] moves = moveStr.split(" ");
@@ -245,10 +266,11 @@ public class OthelloServerWorker implements Runnable {
         if (ply <= 0 && moves.length > 0) {
             
             for (int i = 0; i < moves.length; i++) {
-                AlphaBetaBoard next = new AlphaBetaBoard(current.boardCopy(), board.moveCount);
-                next.makeMove(token, moves[i]);
+                //AlphaBetaBoard next = new AlphaBetaBoard(current.boardCopy(), board.moveCount);
+                Move move = board.makeMove(token, moves[i]);
                 
-                int sberesult = sbe(next);
+                int sberesult = sbe(board);
+                board.unmakeMove(move);
                 
                 if (sberesult > bestSoFar) {
                     bestSoFar = sberesult;
@@ -263,9 +285,10 @@ public class OthelloServerWorker implements Runnable {
 
         // This will look through all the top moves at the very least because alpha is always less than beta.
         for (int i = 0; i < moves.length; i++) {
-            AlphaBetaBoard next = new AlphaBetaBoard(current.boardCopy(), board.moveCount);
-            next.makeMove(token, moves[i]); // Make the move with our token
-            abresult = alphabeta(next, ply - 1, alpha, beta, false);
+            //AlphaBetaBoard next = new AlphaBetaBoard(current.boardCopy(), board.moveCount);
+            Move move = board.makeMove(token, moves[i]); // Make the move with our token
+            abresult = alphabeta(board, ply - 1, alpha, beta, false, false);
+            board.unmakeMove(move);
             optionStr += abresult + " ";
 
             if (abresult > bestSoFar) {
