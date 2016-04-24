@@ -10,7 +10,7 @@ public class OthelloGame
 {
 	private Board board;                    // the playing surface
 	private final char [] TOKEN= {'X','O'}; // list of tokens
-	private OthelloPlayer [] player;        // array of (2) players
+	private MattOthelloPlayerPrime [] player;        // array of (2) players
 	private boolean verbose;                // determines amount of output
 	private int start;                      // who starts?
 
@@ -25,16 +25,27 @@ public class OthelloGame
 	 *
 	 * <p>See createPlayer() for documention about player types.</p>
 	 */
+	 /*
 	public OthelloGame(int p1type, int p2type, boolean verbose, int start)
 	{
 		board= new Board();
-		player= new OthelloPlayer[2];
+		player= new MattOthelloP[2];
 		this.verbose= verbose;
 		player[0]= createPlayer(p1type,TOKEN[0]);
 		player[1]= createPlayer(p2type,TOKEN[1]);
 		this.start= start;
 	}
-
+*/
+    public OthelloGame(MattOthelloPlayerPrime p1type, MattOthelloPlayerPrime p2type, boolean verbose) {
+        board= new Board();
+        p1type.board = board;
+        p2type.board = board;
+        player= new MattOthelloPlayerPrime[2];
+        this.verbose= verbose;
+        player[0]= p1type;
+        player[1]= p2type;
+        this.start= 0; // Player 1 always goes first
+    }
 
 	/**
 	 * Create a new game with specified types of players, verbose output, and
@@ -43,21 +54,23 @@ public class OthelloGame
 	 * @param p1type type of player 1
 	 * @param p2type type of player 2
 	 */
+/*	
 	public OthelloGame(int p1type, int p2type)
 	{
 		this(p1type,p2type,true,-1);
 	}
-
+*/
 
 	/**
 	 * Create a new game with human vs human, verbose
 	 * output, and random start.
 	 */
+/*
 	public OthelloGame()
 	{
 		this(0,1,true,-1);
 	}
-
+*/
 
 	/**
 	 * Create new player of the specified type using the specified token.
@@ -71,6 +84,7 @@ public class OthelloGame
 	 * <li>0 = human</li>
 	 * </ul>
 	 */
+	 
 	private OthelloPlayer createPlayer(int type, char token)
 	{
 		if (type==0) {
@@ -81,6 +95,33 @@ public class OthelloGame
 		}
 	}
 
+    public int tokenCount(char[][] grid, char targetToken) {
+        int count = 0;
+
+        for (int row = 0; row < grid.length; row++) {
+            for (int col = 0; col < grid[0].length; col++) {
+                if (grid[row][col] == targetToken) {
+                    count++;
+                }
+            }
+        }
+
+        return count;
+    }
+
+    public char[][] boardCopy(Board board) {
+        int rows = board.grid.length;
+        int cols = board.grid[0].length;
+        char[][] copy = new char[rows][cols];
+
+        for (int row = 0; row < copy.length; row++) {
+            for (int col = 0; col < copy[0].length; col++) {
+                copy[row][col] = board.grid[row][col];
+            }
+        }
+
+        return copy;
+    }    
 
 	/**
 	 * Play a game of Othello/Reversi.
@@ -112,5 +153,23 @@ public class OthelloGame
 		System.out.println(player[0]+" vs. "+player[1]);
 		System.out.println(player[start]+" started");
 		board.showResults();
+		
+		// update scores
+		AlphaBetaBoard current = new AlphaBetaBoard(boardCopy(board), 0);
+        current.xcount = tokenCount(current.grid, 'X');
+        current.ocount = tokenCount(current.grid, 'O');
+        
+        if (current.xcount > current.ocount) {
+            player[0].wins++;
+            player[0].genWins++;
+            player[1].losses++;
+            player[1].genLosses++;
+        }
+        else if (current.xcount < current.ocount) {
+            player[1].wins++;
+            player[1].genWins++;
+            player[0].losses++;
+            player[0].genLosses++;
+        }
 	}
 }
