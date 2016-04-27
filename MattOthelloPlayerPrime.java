@@ -25,11 +25,11 @@ public class MattOthelloPlayerPrime extends OthelloPlayer implements Comparable<
     double wWeight;
     //double sWeight;
     double mWeight;
-    int genWins;
-    int genLosses;
+    long genWins;
+    long genLosses;
     int genScore;
-    int wins;
-    int losses;
+    long wins;
+    long losses;
     int score;
     int x;
     int y;
@@ -51,7 +51,7 @@ public class MattOthelloPlayerPrime extends OthelloPlayer implements Comparable<
     /**
      * Set the board and token.
      */
-    public MattOthelloPlayerPrime(Board board, char token, double t, double w, double m, int wi, int lo, int gw, int gl, int i, int j, int k) {
+    public MattOthelloPlayerPrime(Board board, char token, double t, double w, double m, long wi, long lo, long gw, long gl, int i, int j, int k) {
         super(board, token);
 
         if (token == 'X') {
@@ -179,6 +179,10 @@ public class MattOthelloPlayerPrime extends OthelloPlayer implements Comparable<
         }
 
         return count;
+    }
+    
+    public boolean allZeros() {
+        return tWeight == 0 && wWeight == 0 && mWeight == 0;
     }
     
     // Always from X's perspective
@@ -399,7 +403,7 @@ public class MattOthelloPlayerPrime extends OthelloPlayer implements Comparable<
     }
 
     public String makeMove(AlphaBetaBoard board) {
-        int ply = 6; // initial ply.
+        int ply = 4; // initial ply.
 
         if (60 - board.moveCount < ply) { // You don't want to look more if the game will be over.
             ply = 60 - board.moveCount;
